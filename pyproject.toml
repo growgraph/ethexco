@@ -1,15 +1,17 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
 [tool.poetry]
-name = "ethexco"
-version = "0.1.0"
-description = "Agentic Ethics Council"
 authors = ["Alexander Belikov <alexander@growgraph.dev>"]
+description = "Agentic Ethics Council"
+name = "ethexco"
 readme = "README.md"
+version = "0.1.0"
 
 [tool.poetry.dependencies]
-python = "^3.11"
 llama-index = "^0.12.16"
+python = "^3.11"
 
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
