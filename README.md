@@ -1,1 +1,1 @@
-# ethex_council
+# Ethics Experts Council [EthExCo]
