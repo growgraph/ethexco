@@ -6,12 +6,22 @@ requires = ["poetry-core"]
 authors = ["Alexander Belikov <alexander@growgraph.dev>"]
 description = "Agentic Ethics Council"
 name = "ethexco"
+packages = [{include = "ethexco"}]
 readme = "README.md"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
-llama-index = "^0.12.16"
+datasets = "^3.3.2"
+langchain-core = "^0.3.40"
+langchain-openai = "^0.3.7"
+llama-index = "^0.12.19"
+llama-index-readers-json = "^0.3.0"
+matplotlib = "^3.10.1"
+pydotplus = "^2.0.2"
 python = "^3.11"
+rdflib = "^7.1.3"
+suthing = "^0.3.0"
+unsloth = "^2025.2.15"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"
