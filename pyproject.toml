@@ -25,3 +25,4 @@ unsloth = "^2025.2.15"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"
+jupyterlab = "^4.3.5"
