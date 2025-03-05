@@ -191,8 +191,9 @@ def main(dataset_path, model_name, model_path, max_steps):
             return_tensors="pt",
         ).to("cuda")
 
-        text_streamer = TextStreamer(tokenizer, skip_prompt=False)
-        print(f"{convo[0]}\n\n")
+        text_streamer = TextStreamer(tokenizer, skip_prompt=True)
+        print("----------------------\n\n")
+        print(f"{convo[0]['content']}\n\n")
         ans = model.generate(
             input_ids,
             streamer=text_streamer,
