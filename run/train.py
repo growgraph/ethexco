@@ -78,10 +78,12 @@ def model_setup(model_name, max_seq_length):
     default=30,
 )
 def main(dataset_path, model_name, model_path, max_steps):
-    max_seq_length = 2048  # Choose any! We auto support RoPE Scaling internally!
+    model_path = model_path.expanduser()
+
+    max_seq_length = 2048
     try:
         model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=model_path,
+            model_name=model_path.as_posix(),
             max_seq_length=max_seq_length,
             dtype=None,
             load_in_4bit=True,
@@ -189,7 +191,8 @@ def main(dataset_path, model_name, model_path, max_steps):
             return_tensors="pt",
         ).to("cuda")
 
-        text_streamer = TextStreamer(tokenizer, skip_prompt=True)
+        text_streamer = TextStreamer(tokenizer, skip_prompt=False)
+        print(f"{convo[0]}\n\n")
         ans = model.generate(
             input_ids,
             streamer=text_streamer,
