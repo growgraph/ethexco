@@ -11,11 +11,16 @@ from unsloth import standardize_sharegpt
 from unsloth import apply_chat_template
 from unsloth import FastLanguageModel
 
+from trl import SFTTrainer
+from transformers import TrainingArguments
+from transformers import TextStreamer
+from unsloth import is_bfloat16_supported
+import torch
+
 logger = logging.getLogger(__name__)
 
 
-def model_setup(model_name):
-    max_seq_length = 2048  # Choose any! We auto support RoPE Scaling internally!
+def model_setup(model_name, max_seq_length):
     dtype = None  # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
     load_in_4bit = True  # Use 4bit quantization to reduce memory usage. Can be False.
 
@@ -72,7 +77,9 @@ def main(
     model_name,
     model_path,
 ):
-    model, tokenizer = model_setup(model_name)
+    max_seq_length = 2048  # Choose any! We auto support RoPE Scaling internally!
+
+    model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
     dataset0 = Dataset.load_from_disk(dataset_path.expanduser())
 
     n_samples = len(dataset0)
@@ -101,6 +108,81 @@ def main(
         tokenizer=tokenizer,
         chat_template=chat_template,
         # default_system_message = "You are a helpful assistant", << [OPTIONAL]
+    )
+
+    trainer = SFTTrainer(
+        model=model,
+        tokenizer=tokenizer,
+        train_dataset=dataset,
+        dataset_text_field="text",
+        max_seq_length=max_seq_length,
+        dataset_num_proc=2,
+        packing=False,  # Can make training 5x faster for short sequences.
+        args=TrainingArguments(
+            per_device_train_batch_size=2,
+            gradient_accumulation_steps=4,
+            warmup_steps=5,
+            max_steps=30,
+            # num_train_epochs = 1, # For longer training runs!
+            learning_rate=2e-4,
+            fp16=not is_bfloat16_supported(),
+            bf16=is_bfloat16_supported(),
+            logging_steps=1,
+            optim="adamw_8bit",
+            weight_decay=0.01,
+            lr_scheduler_type="linear",
+            seed=13,
+            output_dir="outputs",
+            report_to="none",  # Use this for WandB etc
+        ),
+    )
+
+    trainer_stats = trainer.train()
+
+    model.save_pretrained(model_path)  # Local saving
+    tokenizer.save_pretrained(model_path)
+
+    used_memory = round(torch.cuda.max_memory_reserved() / 1024 / 1024 / 1024, 3)
+    # used_memory_for_lora = round(used_memory - start_gpu_memory, 3)
+    # used_percentage = round(used_memory / max_memory * 100, 3)
+    # lora_percentage = round(used_memory_for_lora / max_memory * 100, 3)
+    print(f"{trainer_stats.metrics['train_runtime']} seconds used for training.")
+    print(
+        f"{round(trainer_stats.metrics['train_runtime'] / 60, 2)} minutes used for training."
+    )
+    print(f"Peak reserved memory = {used_memory} GB.")
+
+    FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
+
+    system_message = "You are William James, a philosopher. Respond concisely.\n"
+    system_message = "You are John Stuart Mill, a philosopher. Respond concisely.\n"
+
+    messages = [
+        # {"role": "system", "content": f"{system_message}"},
+        # {"role": "user", "content": f"Do moral truths hold universally?"},
+        {
+            "role": "user",
+            "content": f"{system_message} Do moral truths hold universally?",
+        },
+    ]
+
+    # prompt = f"<|system|>\n{system_message}\n<|user|>\n{user_message}\n<|assistant|> "
+    # input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to("cuda")
+
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        return_tensors="pt",
+    ).to("cuda")
+
+    text_streamer = TextStreamer(tokenizer, skip_prompt=True)
+    _ = model.generate(
+        input_ids,
+        streamer=text_streamer,
+        max_new_tokens=128,
+        pad_token_id=tokenizer.eos_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+        # use_cache = True
     )
 
 
