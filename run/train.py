@@ -9,6 +9,7 @@ import numpy as np
 from unsloth import to_sharegpt
 from unsloth import standardize_sharegpt
 from unsloth import apply_chat_template
+from itertools import product
 from unsloth import FastLanguageModel
 
 from trl import SFTTrainer
@@ -78,8 +79,18 @@ def model_setup(model_name, max_seq_length):
 )
 def main(dataset_path, model_name, model_path, max_steps):
     max_seq_length = 2048  # Choose any! We auto support RoPE Scaling internally!
+    try:
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=model_path,
+            max_seq_length=max_seq_length,
+            dtype=None,
+            load_in_4bit=True,
+        )
+        # FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
+    except Exception:
+        logger.info("no valid model found; init fresh model")
+        model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
 
-    model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
     dataset0 = Dataset.load_from_disk(dataset_path.expanduser())
 
     n_samples = len(dataset0)
@@ -154,36 +165,40 @@ def main(dataset_path, model_name, model_path, max_steps):
 
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
 
-    system_message = "You are William James, a philosopher. Respond concisely.\n"
-    system_message = "You are John Stuart Mill, a philosopher. Respond concisely.\n"
-
-    messages = [
-        # {"role": "system", "content": f"{system_message}"},
-        # {"role": "user", "content": f"Do moral truths hold universally?"},
-        {
-            "role": "user",
-            "content": f"{system_message} Do moral truths hold universally?",
-        },
+    system_messages = [
+        "You are William James, a philosopher. Respond concisely.",
+        "You are John Stuart Mill, a philosopher. Respond concisely.",
     ]
 
-    # prompt = f"<|system|>\n{system_message}\n<|user|>\n{user_message}\n<|assistant|> "
-    # input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to("cuda")
+    questions = [
+        "What is the ultimate criterion for determining the rightness of an action?",
+        "Do moral truths hold universally?",
+        "What does ‘happiness’ mean in ethical evaluation?",
+        "In evaluating whether an action is morally good, how do you weigh the measurable, quantitative outcomes – such as the overall balance of pleasure and pain – against the qualitative, intrinsic value of those outcomes, like the distinction between higher and lower pleasures or the lived, experiential significance of those consequences?",
+    ]
 
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        return_tensors="pt",
-    ).to("cuda")
+    convos = []
+    answers = []
 
-    text_streamer = TextStreamer(tokenizer, skip_prompt=True)
-    _ = model.generate(
-        input_ids,
-        streamer=text_streamer,
-        max_new_tokens=128,
-        pad_token_id=tokenizer.eos_token_id,
-        eos_token_id=tokenizer.eos_token_id,
-        # use_cache = True
-    )
+    for s, q in product(system_messages, questions):
+        convos += [[{"role": "user", "content": f"{s}\n\n{q}"}]]
+    for convo in convos:
+        input_ids = tokenizer.apply_chat_template(
+            convo,
+            add_generation_prompt=True,
+            return_tensors="pt",
+        ).to("cuda")
+
+        text_streamer = TextStreamer(tokenizer, skip_prompt=True)
+        ans = model.generate(
+            input_ids,
+            streamer=text_streamer,
+            max_new_tokens=128,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            # use_cache = True
+        )
+        answers += [ans]
 
 
 if __name__ == "__main__":
