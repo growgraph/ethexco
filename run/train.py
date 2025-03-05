@@ -69,14 +69,14 @@ def model_setup(model_name, max_seq_length):
 @click.option(
     "--model-name",
     type=click.STRING,
-    required=True,
     default="unsloth/Llama-3.2-3B-Instruct-unsloth-bnb-4bit",
 )
-def main(
-    dataset_path,
-    model_name,
-    model_path,
-):
+@click.option(
+    "--max-steps",
+    type=click.INT,
+    default=30,
+)
+def main(dataset_path, model_name, model_path, max_steps):
     max_seq_length = 2048  # Choose any! We auto support RoPE Scaling internally!
 
     model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
@@ -90,7 +90,7 @@ def main(
         dataset0_rs,
         merged_prompt="{system}[[\nYour input is:\n{input}]]",
         output_column_name="output",
-        conversation_extension=3,
+        conversation_extension=1,
     )
 
     dataset = standardize_sharegpt(dataset_shr)
@@ -122,7 +122,7 @@ def main(
             per_device_train_batch_size=2,
             gradient_accumulation_steps=4,
             warmup_steps=5,
-            max_steps=30,
+            max_steps=max_steps,
             # num_train_epochs = 1, # For longer training runs!
             learning_rate=2e-4,
             fp16=not is_bfloat16_supported(),
