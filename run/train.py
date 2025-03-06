@@ -210,8 +210,12 @@ def main(dataset_path, model_name, model_path, report_path, max_steps):
         )
         answers += [tt]
 
-        generated_text = tokenizer.batch_decode(tt, skip_special_tokens=True)[0]
-        report = [
+        generated_tokens = tt[0, input_ids.shape[1] :]
+
+        generated_text = tokenizer.batch_decode(
+            generated_tokens, skip_special_tokens=True
+        )[0]
+        report += [
             {
                 "question": convo[0]["question"],
                 "system": convo[0]["system"],
