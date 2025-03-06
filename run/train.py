@@ -229,6 +229,11 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     suthing.FileHandle.dump(report, report_path / "report.json")
     model.save_pretrained(model_path)
     tokenizer.save_pretrained(model_path)
+    # model.save_pretrained_gguf("dir", tokenizer, quantization_method="q4_k_m")
+    # model.save_pretrained_gguf("dir", tokenizer, quantization_method="q8_0")
+    model.save_pretrained_gguf(
+        f"{model_path}.f16", tokenizer, quantization_method="f16"
+    )
     model.save_pretrained_merged(f"{model_path}.merged", tokenizer, save_method="lora")
     # model.save_pretrained_gguf(
     #     f"{model_path}.q4", tokenizer, quantization_method="q4_k_m"
