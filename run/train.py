@@ -4,6 +4,7 @@ import sys
 
 import pathlib
 import click
+import suthing
 from datasets import Dataset
 import numpy as np
 from unsloth import to_sharegpt
@@ -77,7 +78,8 @@ def model_setup(model_name, max_seq_length):
     type=click.INT,
     default=30,
 )
-def main(dataset_path, model_name, model_path, max_steps):
+@click.option("--report-path", type=click.Path(path_type=pathlib.Path), required=True)
+def main(dataset_path, model_name, model_path, report_path, max_steps):
     model_path = model_path.expanduser()
 
     max_seq_length = 2048
@@ -183,7 +185,11 @@ def main(dataset_path, model_name, model_path, max_steps):
     answers = []
 
     for s, q in product(system_messages, questions):
-        convos += [[{"role": "user", "content": f"{s}\n\n{q}"}]]
+        convos += [
+            [{"role": "user", "content": f"{s}\n\n{q}", "system": s, "question": q}]
+        ]
+
+    report = []
     for convo in convos:
         input_ids = tokenizer.apply_chat_template(
             convo,
@@ -194,7 +200,7 @@ def main(dataset_path, model_name, model_path, max_steps):
         text_streamer = TextStreamer(tokenizer, skip_prompt=True)
         print("----------------------\n\n")
         print(f"{convo[0]['content']}\n\n")
-        ans = model.generate(
+        tt = model.generate(
             input_ids,
             streamer=text_streamer,
             max_new_tokens=128,
@@ -202,7 +208,22 @@ def main(dataset_path, model_name, model_path, max_steps):
             eos_token_id=tokenizer.eos_token_id,
             # use_cache = True
         )
-        answers += [ans]
+        answers += [tt]
+
+        generated_text = tokenizer.batch_decode(tt, skip_special_tokens=True)[0]
+        report = [
+            {
+                "question": convo[0]["question"],
+                "system": convo[0]["system"],
+                "answer": generated_text,
+            }
+        ]
+
+    suthing.FileHandle.dump(report, report_path / "report.json")
+    # model.save_pretrained_merged(f"{model_path}.merged", tokenizer, save_method = "lora")
+    model.save_pretrained_gguf(
+        f"{model_path}.q4", tokenizer, quantization_method="q4_k_m"
+    )
 
 
 if __name__ == "__main__":
