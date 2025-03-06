@@ -238,7 +238,15 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     model.save_pretrained_merged(
         f"{model_path}.4",
         tokenizer,
-        save_method="merged_4bit",
+        save_method="`merged_4bit_forced",
+    )
+
+    model.save_pretrained_gguf(
+        f"{model_path}.q8",
+        tokenizer,
+    )
+    model.save_pretrained_gguf(
+        f"{model_path}.q4_k_m", tokenizer, quantization_method="q4_k_m"
     )
     # tokenizer.save_pretrained_merged(f"{model_path}.merged")
     # model.save_pretrained_gguf("dir", tokenizer, quantization_method="q4_k_m")
