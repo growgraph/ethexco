@@ -79,21 +79,24 @@ def model_setup(model_name, max_seq_length):
     default=30,
 )
 @click.option("--report-path", type=click.Path(path_type=pathlib.Path), required=True)
-def main(dataset_path, model_name, model_path, report_path, max_steps):
+@click.option("--fresh", type=click.BOOL, is_flag=True, default=False)
+def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     model_path = model_path.expanduser()
 
     max_seq_length = 2048
-    try:
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=model_path.as_posix(),
-            max_seq_length=max_seq_length,
-            dtype=None,
-            load_in_4bit=True,
-        )
-        # FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
-    except Exception:
-        logger.info("no valid model found; init fresh model")
+    if fresh:
         model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
+    else:
+        try:
+            model, tokenizer = FastLanguageModel.from_pretrained(
+                model_name=model_path.as_posix(),
+                max_seq_length=max_seq_length,
+                dtype=None,
+                load_in_4bit=True,
+            )
+        except Exception:
+            logger.info("no valid model found; init fresh model")
+            model, tokenizer = model_setup(model_name, max_seq_length=max_seq_length)
 
     dataset0 = Dataset.load_from_disk(dataset_path.expanduser())
 
@@ -224,12 +227,11 @@ def main(dataset_path, model_name, model_path, report_path, max_steps):
         ]
 
     suthing.FileHandle.dump(report, report_path / "report.json")
-    # model.save_pretrained_merged(f"{model_path}.merged", tokenizer, save_method = "lora")
-    model.save_pretrained("model")
-    tokenizer.save_pretrained("model")
-    # model.save_pretrained_gguf(
-    #     f"{model_path}.q4", tokenizer, quantization_method="q4_k_m"
-    # )
+    model.save_pretrained(model_path)
+    tokenizer.save_pretrained(model_path)
+    model.save_pretrained_gguf(
+        f"{model_path}.q4", tokenizer, quantization_method="q4_k_m"
+    )
 
 
 if __name__ == "__main__":
