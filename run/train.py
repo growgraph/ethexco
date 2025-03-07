@@ -173,27 +173,67 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     FastLanguageModel.for_inference(model)  # Enable native 2x faster inference
 
     system_messages = [
-        "You are William James, a philosopher. Respond concisely.",
-        "You are John Stuart Mill, a philosopher. Respond concisely.",
+        {"person": "William James"},
+        {"person": "John Stuart Mill"},
+        # "You are John Stuart Mill, a philosopher. Respond concisely.",
     ]
 
+    instructions = {
+        "simple": "Respond concisely.",
+        "situation": "Consider the situation below and provide and answer that according to your philosophical views.",
+    }
+
     questions = [
-        "What is the ultimate criterion for determining the rightness of an action?",
-        "Do moral truths hold universally?",
-        "What does ‘happiness’ mean in ethical evaluation?",
-        "In evaluating whether an action is morally good, how do you weigh the measurable, quantitative outcomes – such as the overall balance of pleasure and pain – against the qualitative, intrinsic value of those outcomes, like the distinction between higher and lower pleasures or the lived, experiential significance of those consequences?",
+        {
+            "body:": "What is the ultimate criterion for determining the rightness of an action?",
+            "type": "simple",
+        },
+        {"body:": "Do moral truths hold universally?", "type": "simple"},
+        {
+            "body:": "What does ‘happiness’ mean in ethical evaluation?",
+            "type": "simple",
+        },
+        {
+            "body:": "In evaluating whether an action is morally good, how do you weigh the measurable, quantitative outcomes – such as the overall balance of pleasure and pain – against the qualitative, intrinsic value of those outcomes, like the distinction between higher and lower pleasures or the lived, experiential significance of those consequences?",
+            "type": "simple",
+        },
+        {
+            "body:": "Scenario: A hospital is considering diverting funds from routine care to an experimental treatment during a severe outbreak. The treatment saves lives in 70% of patients but causes severe side effects in 20%. Should the hospital proceed?",
+            "type": "situation",
+        },
+        {
+            "body:": "Scenario: A company shifts from individual bonuses to a team-based reward system. Productivity rises by 25%, but some high-performing employees resign due to feeling unrecognized. Should the system remain?",
+            "type": "situation",
+        },
     ]
 
     convos = []
     answers = []
 
-    for s, q in product(system_messages, questions):
+    for system, question in product(system_messages, questions):
+        person = system.get("person")
+        qtype = question["type"]
+        q = question
+        instruction = instructions[qtype]
+        s = (f"You are {person}, a philosopher. {instruction}",)
         convos += [
-            [{"role": "user", "content": f"{s}\n\n{q}", "system": s, "question": q}]
+            [
+                {
+                    "role": "user",
+                    "content": f"{s}\n\n{q}",
+                    "system": s,
+                    "question": q,
+                    "person": person,
+                }
+            ]
         ]
 
+    ixs = list(range(len(convos))) * 3
+    np.random.shuffle(ixs)
     report = []
-    for convo in convos:
+
+    for ix in ixs:
+        convo = convos[ix]
         input_ids = tokenizer.apply_chat_template(
             convo,
             add_generation_prompt=True,
@@ -213,13 +253,14 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
         )
         answers += [tt]
 
-        generated_tokens = tt[:, input_ids.shape[1] :]
+        generated_tokens = tt[:, input_ids.shape[1] + 1 :]
 
         generated_text = tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )[0]
         report += [
             {
+                "person": convo[0]["person"],
                 "question": convo[0]["question"],
                 "system": convo[0]["system"],
                 "answer": generated_text,
@@ -230,24 +271,24 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     model.save_pretrained(model_path)
     tokenizer.save_pretrained(model_path)
     # model.save_pretrained_merged(f"{model_path}.merged", tokenizer, save_method="lora")
-    model.save_pretrained_merged(
-        f"{model_path}.16",
-        tokenizer,
-        save_method="merged_16bit",
-    )
-    model.save_pretrained_merged(
-        f"{model_path}.4",
-        tokenizer,
-        save_method="`merged_4bit_forced",
-    )
-
-    model.save_pretrained_gguf(
-        f"{model_path}.q8",
-        tokenizer,
-    )
-    model.save_pretrained_gguf(
-        f"{model_path}.q4_k_m", tokenizer, quantization_method="q4_k_m"
-    )
+    # model.save_pretrained_merged(
+    #     f"{model_path}.16",
+    #     tokenizer,
+    #     save_method="merged_16bit",
+    # )
+    # model.save_pretrained_merged(
+    #     f"{model_path}.4",
+    #     tokenizer,
+    #     save_method="`merged_4bit_forced",
+    # )
+    #
+    # model.save_pretrained_gguf(
+    #     f"{model_path}.q8",
+    #     tokenizer,
+    # )
+    # model.save_pretrained_gguf(
+    #     f"{model_path}.q4_k_m", tokenizer, quantization_method="q4_k_m"
+    # )
     # tokenizer.save_pretrained_merged(f"{model_path}.merged")
     # model.save_pretrained_gguf("dir", tokenizer, quantization_method="q4_k_m")
     # model.save_pretrained_gguf("dir", tokenizer, quantization_method="q8_0")
