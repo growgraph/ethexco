@@ -189,24 +189,24 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, n_repeat,
 
     questions = [
         {
-            "body:": "What is the ultimate criterion for determining the rightness of an action?",
+            "body": "What is the ultimate criterion for determining the rightness of an action?",
             "type": "simple",
         },
         {"body:": "Do moral truths hold universally?", "type": "simple"},
         {
-            "body:": "What does ‘happiness’ mean in ethical evaluation?",
+            "body": "What does ‘happiness’ mean in ethical evaluation?",
             "type": "simple",
         },
         {
-            "body:": "In evaluating whether an action is morally good, how do you weigh the measurable, quantitative outcomes – such as the overall balance of pleasure and pain – against the qualitative, intrinsic value of those outcomes, like the distinction between higher and lower pleasures or the lived, experiential significance of those consequences?",
+            "body": "In evaluating whether an action is morally good, how do you weigh the measurable, quantitative outcomes – such as the overall balance of pleasure and pain – against the qualitative, intrinsic value of those outcomes, like the distinction between higher and lower pleasures or the lived, experiential significance of those consequences?",
             "type": "simple",
         },
         {
-            "body:": "Scenario: A hospital is considering diverting funds from routine care to an experimental treatment during a severe outbreak. The treatment saves lives in 70% of patients but causes severe side effects in 20%. Should the hospital proceed?",
+            "body": "Scenario: A hospital is considering diverting funds from routine care to an experimental treatment during a severe outbreak. The treatment saves lives in 70% of patients but causes severe side effects in 20%. Should the hospital proceed?",
             "type": "situation",
         },
         {
-            "body:": "Scenario: A company shifts from individual bonuses to a team-based reward system. Productivity rises by 25%, but some high-performing employees resign due to feeling unrecognized. Should the system remain?",
+            "body": "Scenario: A company shifts from individual bonuses to a team-based reward system. Productivity rises by 25%, but some high-performing employees resign due to feeling unrecognized. Should the system remain?",
             "type": "situation",
         },
     ]
