@@ -78,9 +78,14 @@ def model_setup(model_name, max_seq_length):
     type=click.INT,
     default=30,
 )
+@click.option(
+    "--n-repeat",
+    type=click.INT,
+    default=3,
+)
 @click.option("--report-path", type=click.Path(path_type=pathlib.Path), required=True)
 @click.option("--fresh", type=click.BOOL, is_flag=True, default=False)
-def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
+def main(dataset_path, model_name, model_path, report_path, max_steps, n_repeat, fresh):
     model_path = model_path.expanduser()
 
     max_seq_length = 2048
@@ -227,7 +232,7 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
             ]
         ]
 
-    ixs = list(range(len(convos))) * 3
+    ixs = list(range(len(convos))) * n_repeat
     np.random.shuffle(ixs)
     report = []
 
