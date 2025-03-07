@@ -175,7 +175,6 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     system_messages = [
         {"person": "William James"},
         {"person": "John Stuart Mill"},
-        # "You are John Stuart Mill, a philosopher. Respond concisely.",
     ]
 
     instructions = {
@@ -213,9 +212,9 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, fresh):
     for system, question in product(system_messages, questions):
         person = system.get("person")
         qtype = question["type"]
-        q = question
+        q = question["body"]
         instruction = instructions[qtype]
-        s = (f"You are {person}, a philosopher. {instruction}",)
+        s = f"You are {person}, a philosopher. {instruction}"
         convos += [
             [
                 {
