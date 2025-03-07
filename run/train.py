@@ -192,7 +192,7 @@ def main(dataset_path, model_name, model_path, report_path, max_steps, n_repeat,
             "body": "What is the ultimate criterion for determining the rightness of an action?",
             "type": "simple",
         },
-        {"body:": "Do moral truths hold universally?", "type": "simple"},
+        {"body": "Do moral truths hold universally?", "type": "simple"},
         {
             "body": "What does ‘happiness’ mean in ethical evaluation?",
             "type": "simple",
