@@ -17,11 +17,16 @@ def format_as_chat_example(doc):
     Convert a doc into OpenAI-like chat format for unsloth apply_chat_template.
     You could swap to LLaMA or Mistral format if needed.
     """
-    frames = doc.pop("response.structured")
-    context = doc.pop("source.context")
+    frame = doc.pop("response_structured")
+    context = doc.pop("source_context")
 
-    if set(frames) != set(Frame) or any(v is None for v in frames.values()):
-        print(frames)
+    important_fields = {Frame.QUESTION, Frame.THESIS}
+
+    if set(frame) != set(Frame) or any(frame[k] is None for k in important_fields):
+        logger.warning(f"Present fields: {sorted(frame.keys())}")
+        logger.warning(
+            f"Among them Nones: fields: {sorted(k for k, v in frame.items() if v is None)}"
+        )
         return {}
 
     system_message = ""
@@ -31,30 +36,32 @@ def format_as_chat_example(doc):
     if "author" in context and context["author"] is not None:
         system_message += f"You are {context['author']}.\n"
 
-    if "author.context" in context and context["author.context"] is not None:
-        system_message += f"Character description : {context['author.context']}\n"
+    if "author_context" in context and context["author_context"] is not None:
+        system_message += f"Character description : {context['author_context']}\n"
 
     if "title" in context and context["title"] is not None:
         system_message += (
             f"""The section is from a book called "{context['title']}".\n"""
         )
 
-    if Frame.METHOD in frames and frames[Frame.METHOD] is not None:
-        system_message += f"Your argumentation method : {frames[Frame.METHOD]}\n"
+    if Frame.METHOD in frame and frame[Frame.METHOD] is not None:
+        system_message += f"Your argumentation method : {frame[Frame.METHOD]}\n"
 
-    if Frame.CONTEXT in frames and frames[Frame.CONTEXT] is not None:
+    if Frame.CONTEXT in frame and frame[Frame.CONTEXT] is not None:
         system_message += (
-            f"The context of the question/problem : {frames[Frame.CONTEXT]}\n"
+            f"The context of the question/problem : {frame[Frame.CONTEXT]}\n"
         )
 
-    if Frame.ASSUMPTIONS in frames and frames[Frame.ASSUMPTIONS] is not None:
-        system_message += f"The assumptions for this : {frames[Frame.ASSUMPTIONS]}\n"
+    if Frame.ASSUMPTIONS in frame and frame[Frame.ASSUMPTIONS] is not None:
+        system_message += (
+            f"The assumptions for this passage are: {frame[Frame.ASSUMPTIONS]}\n"
+        )
 
-    if Frame.QUESTION in frames and frames[Frame.QUESTION] is not None:
-        user_message += f"{frames[Frame.QUESTION]}\n"
+    if Frame.QUESTION in frame and frame[Frame.QUESTION] is not None:
+        user_message += f"{frame[Frame.QUESTION]}\n"
 
-    if Frame.THESIS in frames and frames[Frame.THESIS] is not None:
-        assistant_message += f"{frames[Frame.THESIS]}\n"
+    if Frame.THESIS in frame and frame[Frame.THESIS] is not None:
+        assistant_message += f"{frame[Frame.THESIS]}\n"
 
     return {
         "system": system_message,
@@ -84,7 +91,6 @@ def main(input_path, output_path, dataset_name):
         agg += r2
 
     dataset = Dataset.from_list(agg)
-    print(dataset)
     dataset.save_to_disk(output_path / dataset_name)
 
 

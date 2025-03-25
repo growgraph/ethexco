@@ -25,25 +25,30 @@ def run(env_path, input_path):
     files = sorted(crawl_directories(input_path.expanduser()))
     for fname in files:
         data = suthing.FileHandle.load(fname)
-        doc = Document(text=data["text"])
-        documents = [doc]
+        for item in data:
+            if "chunks" in item:
+                continue
+            doc = Document(text=item["text"])
+            documents = [doc]
 
-        embed_model = OpenAIEmbedding()
-        base_splitter = SentenceSplitter()
-        base_nodes = base_splitter.get_nodes_from_documents(documents)
+            embed_model = OpenAIEmbedding()
+            base_splitter = SentenceSplitter()
+            base_nodes = base_splitter.get_nodes_from_documents(documents)
 
-        splitter = SemanticSplitterNodeParser(
-            buffer_size=5, breakpoint_percentile_threshold=90, embed_model=embed_model
-        )
+            splitter = SemanticSplitterNodeParser(
+                buffer_size=5,
+                breakpoint_percentile_threshold=90,
+                embed_model=embed_model,
+            )
 
-        nodes = splitter.get_nodes_from_documents(documents)
-        sizes = [len(x.get_content()) for x in base_nodes]
-        print(fname)
-        print(len(nodes), len(base_nodes))
-        print(sizes)
-        print(np.histogram(sizes))
+            nodes = splitter.get_nodes_from_documents(documents)
+            sizes = [len(x.get_content()) for x in base_nodes]
+            print(fname)
+            print(len(nodes), len(base_nodes))
+            print(sizes)
+            print(np.histogram(sizes))
 
-        data.update({"chunks": [x.get_content() for x in base_nodes]})
+            item.update({"chunks": [x.get_content() for x in base_nodes]})
         suthing.FileHandle.dump(data, fname)
 
 
