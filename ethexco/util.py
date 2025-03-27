@@ -6,10 +6,6 @@ import numpy as np
 import suthing
 from datasets import Dataset
 
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
-
-
 import pathlib
 
 from enum import StrEnum
@@ -36,51 +32,6 @@ frame_content = {
     Frame.METHOD: "What logical or philosophical methods are used to develop their argument and reach their thesis?",
     Frame.TITLE: "What title would you give to the passage if it were an essay?",
 }
-
-
-def render_response(text: str, llm, onto_str: str | None = None):
-    frames_str = "\n".join({f" - **{k}**:{v}" for k, v in frame_content.items()})
-
-    prompt = f"""
-Please process a text - a fragment from a philosophical book.
-There are two independent tasks: task A and task B.
-Task A. Analyze the provided text from the perspective of logical reasoning and provide answers to  the following elements:
-        
-{frames_str}
-        
-For Task A follow the instructions:
-    
- - each answer must be placed in a block marked correspondingly, eg ```{Frame.CONTEXT} ...``` or ```{Frame.METHOD} ...```.  Do not use any markup other than that. 
- - {Frame.QUESTION} and {Frame.TITLE} are the most important elements.
-
-Task B. Generate semantic triples in turtle (ttl) format from the text below.
-         
-For Task B follow the instructions:
- 
- - mark extracted semantic triples as ```ttl ```.
- - use commonly known ontologies (RDFS, OWL, schema etc) to place encountered abstract entities/properties and facts within a broader ontology.
- - entities representing facts must use the namespace `@prefix cd: <https://growgraph.dev/current#> .` 
- - all entities from `cd:` namespace must IMPERATIVELY linked to entities from basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person schema:Organization, etc
- - all facts must form a connected graph with respect to namespace `cd`.
- - make semantic representation as atomic as possible.
- - keep in mind Task B is independent from Task A.
-
-Below is the input text:
-        
-```input_text
-
-{{input_text}}
-```
-    """
-
-    parser = StrOutputParser()
-
-    prompt = PromptTemplate(template=prompt, input_variables=["input_text"])
-
-    chain = prompt | llm | parser
-
-    response = chain.invoke({"input_text": text})
-    return response
 
 
 def extract_struct(text, key):
@@ -218,7 +169,7 @@ def model_setup(model_name, max_seq_length):
 
         model = FastLanguageModel.get_peft_model(
             model,
-            r=16,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+            r=8,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
             target_modules=[
                 "q_proj",
                 "k_proj",
@@ -228,7 +179,7 @@ def model_setup(model_name, max_seq_length):
                 "up_proj",
                 "down_proj",
             ],
-            lora_alpha=16,
+            lora_alpha=8,
             lora_dropout=0,  # Supports any, but = 0 is optimized
             bias="none",  # Supports any, but = "none" is optimized
             # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -273,7 +224,7 @@ def prepare_dataset(dataset_path, tokenizer=None):
         {INPUT}
     
         ### Response:
-        {OUTPUT}"""
+        {OUTPUT}<|eot_id|>"""
 
         if tokenizer is not None:
             dataset = apply_chat_template(

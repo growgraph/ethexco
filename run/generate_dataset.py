@@ -11,22 +11,27 @@ from ethexco.util import crawl_directories
 logger = logging.getLogger(__name__)
 
 
-# Prepare a function to convert each doc into a training example
 def format_as_chat_example(doc):
     """
     Convert a doc into OpenAI-like chat format for unsloth apply_chat_template.
     You could swap to LLaMA or Mistral format if needed.
     """
-    frame = doc.pop("response_structured")
-    context = doc.pop("source_context")
+    frame = doc.get("response_structured")
+    response = doc.get("response")
+    context = doc.get("source_context")
+    text = doc.get("text")
 
     important_fields = {Frame.QUESTION, Frame.THESIS}
 
-    if set(frame) != set(Frame) or any(frame[k] is None for k in important_fields):
-        logger.warning(f"Present fields: {sorted(frame.keys())}")
+    absent_fields = set(Frame) - set(frame)
+
+    if absent_fields or any(frame[k] is None for k in important_fields):
+        logger.warning(f"Absent fields: {absent_fields}")
         logger.warning(
             f"Among them Nones: fields: {sorted(k for k, v in frame.items() if v is None)}"
         )
+        logger.warning(f"text : {text[:500]}")
+        logger.warning(f"response : {response}")
         return {}
 
     system_message = ""
@@ -70,6 +75,46 @@ def format_as_chat_example(doc):
     }
 
 
+def format_as_essay_example(doc):
+    """
+    Convert a doc into OpenAI-like chat format for unsloth apply_chat_template.
+    You could swap to LLaMA or Mistral format if needed.
+    """
+    frame = doc.get("response_structured")
+    context = doc.get("source_context")
+    text = doc.get("text")
+
+    important_fields = {Frame.TITLE}
+
+    absent_fields = set(Frame) - set(frame)
+
+    if absent_fields or any(frame[k] is None for k in important_fields):
+        logger.warning(f"Absent fields: {absent_fields}")
+        logger.warning(
+            f"Among them Nones: fields: {sorted(k for k, v in frame.items() if v is None)}"
+        )
+        return {}
+
+    system_message = ""
+    user_message = ""
+    assistant_message = text
+
+    if "author" in context and context["author"] is not None:
+        system_message += f"You are {context['author']}.\n"
+
+    if "author_context" in context and context["author_context"] is not None:
+        system_message += f"Character description : {context['author_context']}\n"
+
+    if Frame.TITLE in frame and frame[Frame.TITLE] is not None:
+        user_message += f"Please write an essay titled: {frame[Frame.QUESTION]}\n"
+
+    return {
+        "system": system_message,
+        "input": user_message,
+        "output": assistant_message,
+    }
+
+
 @click.command()
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), required=True)
 @click.option("--output-path", type=click.Path(path_type=pathlib.Path), required=True)
@@ -86,7 +131,9 @@ def main(input_path, output_path, dataset_name):
     agg = []
     for fname in files:
         data = suthing.FileHandle.load(fname)
-        r = [format_as_chat_example(doc) for doc in data]
+        r = [format_as_chat_example(doc) for doc in data] + [
+            format_as_essay_example(doc) for doc in data
+        ]
         r2 = [item for item in r if item.values() and all(v for v in item.values())]
         agg += r2
 
