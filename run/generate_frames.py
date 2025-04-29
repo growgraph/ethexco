@@ -36,29 +36,40 @@ def process_unit(text) -> dict:
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), required=True)
 @click.option("--env-path", type=click.Path(path_type=pathlib.Path), required=True)
 @click.option("--tail", type=click.INT)
+@click.option("--head", type=click.INT)
 @click.option(
     "--output-path",
     type=click.Path(path_type=pathlib.Path),
     required=True,
 )
-def main(input_path, env_path, output_path, tail):
+def main(input_path, env_path, output_path, head, tail):
     _ = load_dotenv(dotenv_path=env_path.expanduser())
     input_path = input_path.expanduser()
 
     files = sorted(crawl_directories(input_path.expanduser()))
     if tail is not None:
         files = files[-tail:]
+    if head is not None:
+        files = files[:head]
 
     for fname in files:
+        print(fname)
         data = suthing.FileHandle.load(fname)
         acc = []
+
+        if head is not None:
+            data = data[:head]
         if tail is not None:
             data = data[-tail:]
+
         for doc in data:
             chunks = doc.pop("chunks", [])
             context = {k: v for k, v in doc.items() if k != "text"}
             if tail is not None:
                 chunks = chunks[-tail:]
+            if head is not None:
+                chunks = chunks[:head]
+
             for chunk in chunks:
                 ch = process_unit(chunk)
                 ch["source_context"] = context

@@ -19,18 +19,20 @@ class Frame(StrEnum):
     ASSUMPTIONS = "Assumptions"
     CONTEXT = "Context"
     METHOD = "Method"
-    QUESTION = "Question"
+    PROBLEM = "Problem"
+    QUESTION_ANSWER_PAIRS = "Question/Answer Pairs"
     THESIS = "Thesis"
     TITLE = "Title"
 
 
 frame_content = {
-    Frame.QUESTION: "What questions or issues are being addressed in the text?",
-    Frame.CONTEXT: "What is the context of the passage? Are there any historical references, references to particular places, group of people, time periods, or professions?",
+    Frame.QUESTION_ANSWER_PAIRS: "Generate concrete comprehension question/answer pairs (as many as necessary) that directly target the main points and arguments in the provided text. All questions and answers MUST be self-contained, providing necessary context (neither rely on the context of previous questions/answers, nor refer to the text provided). All questions and answers MUST use first-person style of writing, as if you are the one writing the text (!). Mark them up as <QUESTION>: bla? <ANSWER>: bla.",
+    Frame.PROBLEM: "What problem (big question) is being brought up the in the provided text. Be very specific (not “What is the text about?”)",
+    Frame.CONTEXT: "What is the context of the text? Are there any historical references, references to particular places, group of people, time periods, or professions?",
     Frame.ASSUMPTIONS: "What assumptions are made, either explicitly or implicitly?",
     Frame.THESIS: "What is the main statement or conclusion of the text?",
     Frame.METHOD: "What logical or philosophical methods are used to develop their argument and reach their thesis?",
-    Frame.TITLE: "What title would you give to the passage if it were an essay?",
+    Frame.TITLE: "What title would you give to the text if it were an essay?",
 }
 
 
@@ -195,7 +197,7 @@ def model_setup(model_name, max_seq_length):
     return model, tokenizer
 
 
-def prepare_dataset(dataset_path, tokenizer=None):
+def prepare_dataset(dataset_path, chat_template, tokenizer=None):
     dataset0 = Dataset.load_from_disk(dataset_path.expanduser())
 
     n_samples = len(dataset0)
@@ -219,12 +221,18 @@ def prepare_dataset(dataset_path, tokenizer=None):
         dataset = standardize_sharegpt(dataset_shr)
 
         chat_template = """Below are instructions that describe the tasks. Write responses that appropriately complete each request.
-    
-        ### Instruction:
-        {INPUT}
-    
-        ### Response:
-        {OUTPUT}<|eot_id|>"""
+
+### Input:
+{INPUT}
+### Response:
+{OUTPUT}
+
+### Input:
+{INPUT}
+### Response:
+{OUTPUT}
+<|end_of_text|>"""
+
 
         if tokenizer is not None:
             dataset = apply_chat_template(
@@ -238,3 +246,42 @@ def prepare_dataset(dataset_path, tokenizer=None):
     except ImportError as e:
         logger.error("Could not import unsloth")
         raise ImportError(f"ImportError: {e}")
+
+
+def parse_qa_pairs(text):
+    # Use regex to find all question-answer pairs
+    pattern = r'<QUESTION>:\s*(.*?)\s*\n<ANSWER>:\s*(.*?)(?=\n<QUESTION>:|$)'
+    matches = re.findall(pattern, text, re.DOTALL)
+
+    # Clean up any trailing whitespace in answers
+    result = [(q.strip(), a.strip()) for q, a in matches]
+    return result
+
+
+
+
+def formatting_prompts_func(examples, tokenizer):
+    # dataset_tr = dataset0.map(formatting_prompts_func, batched=True, )
+    EOS_TOKEN = tokenizer.eos_token  # Must add EOS_TOKEN
+    instructions = examples["system"]
+    inputs       = examples["input"]
+    outputs      = examples["output"]
+
+    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+    ### Instruction:
+    {}
+
+    ### Input:
+    {}
+
+    ### Response:
+    {}"""
+
+    texts = []
+    for instruction, input, output in zip(instructions, inputs, outputs):
+        # Must add EOS_TOKEN, otherwise your generation will go on forever!
+        text = alpaca_prompt.format(instruction, input, output) + EOS_TOKEN
+        texts.append(text)
+    return { "text" : texts, }
+

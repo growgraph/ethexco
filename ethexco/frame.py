@@ -6,18 +6,20 @@ from ethexco.util import frame_content, Frame
 
 def render_response(text: str, llm, onto_str: str | None = None):
     frames_str = "\n".join({f" - **{k}**:{v}" for k, v in frame_content.items()})
+    fields = ", ".join([f"`{k}`" for k in frame_content.keys()])
 
     prompt = f"""
 Please process a text - a fragment from a philosophical book.
 There are two independent tasks: task A and task B.
-Task A. Analyze the provided text from the perspective of logical reasoning and provide answers to  the following elements:
+Task A. We are creating question / answer pairs for LLM training. Analyze the provided text from the perspective of logical reasoning and provide answers to  the following elements:
         
 {frames_str}
         
 For Task A follow the instructions:
     
- - each answer must be placed in a block marked correspondingly, eg ```{Frame.CONTEXT} ...``` or ```{Frame.METHOD} ...```.  Do not use any markup other than that. 
- - {Frame.QUESTION} and {Frame.TITLE} are the most important elements.
+ - each answer must be placed in a block marked correspondingly, eg ```{Frame.CONTEXT} ...``` or ```{Frame.METHOD} ...```.
+ - avoid at all cost referencing the text or the author (e.g. "According to the author..."). Use first-person grammatic forms, as if you were the author of the text, when generating fields {Frame.QUESTION_ANSWER_PAIRS}, {Frame.CONTEXT}, {Frame.ASSUMPTIONS}, {Frame.METHOD}, {Frame.THESIS}.
+ - all (!!!) {fields} must be present in your answer.
 
 Task B. Generate semantic triples in turtle (ttl) format from the text below.
          
