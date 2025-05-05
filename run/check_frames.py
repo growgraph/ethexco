@@ -43,7 +43,12 @@ def main(input_path):
             f["source"] = fname.stem
             agg += [f]
     stats = pd.DataFrame(agg)
+    del stats["ttl"]
+    del stats["text"]
     print(stats.groupby("source").mean())
+    print(stats.groupby("source").mean().mean(0))
+    print(stats.groupby("source").mean().mean(1))
+    print(stats.groupby("source").mean().mean(1).mean())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)

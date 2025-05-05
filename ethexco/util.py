@@ -27,8 +27,8 @@ class Frame(StrEnum):
 
 frame_content = {
     Frame.QUESTION_ANSWER_PAIRS: "Generate concrete comprehension question/answer pairs (as many as necessary) that directly target the main points and arguments in the provided text. All questions and answers MUST be self-contained, providing necessary context (neither rely on the context of previous questions/answers, nor refer to the text provided). All questions and answers MUST use first-person style of writing, as if you are the one writing the text (!). Mark them up as <QUESTION>: bla? <ANSWER>: bla.",
-    Frame.PROBLEM: "What problem (big question) is being brought up the in the provided text. Be very specific (not “What is the text about?”)",
-    Frame.CONTEXT: "What is the context of the text? Are there any historical references, references to particular places, group of people, time periods, or professions?",
+    Frame.PROBLEM: "What problem (big question) is being brought up in the provided text. Be very specific (not “What is the text about?”)",
+    Frame.CONTEXT: "What is the context of the text? Are there any historical references, references to particular places, groups of people, time periods, or professions?",
     Frame.ASSUMPTIONS: "What assumptions are made, either explicitly or implicitly?",
     Frame.THESIS: "What is the main statement or conclusion of the text?",
     Frame.METHOD: "What logical or philosophical methods are used to develop their argument and reach their thesis?",

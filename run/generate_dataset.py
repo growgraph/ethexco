@@ -3,8 +3,10 @@ import sys
 
 import pathlib
 import click
+import pandas as pd
 import suthing
 from datasets import Dataset
+from collections import defaultdict
 from ethexco.util import Frame, crawl_directories, parse_qa_pairs
 
 logger = logging.getLogger(__name__)
@@ -131,17 +133,24 @@ def main(input_path, output_path, dataset_name):
 
     files = sorted(crawl_directories(input_path.expanduser()))
 
-    agg = []
+    agg: defaultdict = defaultdict(list)
     for fname in files:
+        author = fname.stem.split("_")[0]
         data = suthing.FileHandle.load(fname)
-        r = []
         for doc in data:
-            r += format_as_chat_example(doc)
-            r += [format_as_essay_example(doc)]
-        r2 = [item for item in r if item.values() and all(v for v in item.values())]
-        agg += r2
+            agg[(author, "qa")] += format_as_chat_example(doc)
+            agg[(author, "essay")] += [format_as_essay_example(doc)]
 
-    dataset = Dataset.from_list(agg)
+    for k, v in agg.items():
+        agg[k] = [item for item in v if item.values() and all(v for v in item.values())]
+
+    ds = []
+    for v in agg.values():
+        ds += v
+
+    df = pd.DataFrame([(*k, len(v)) for k, v in agg.items()], columns=["author", "type", "counts"])
+    print(df)
+    dataset = Dataset.from_list(ds)
     dataset.save_to_disk(output_path / dataset_name)
 
 
